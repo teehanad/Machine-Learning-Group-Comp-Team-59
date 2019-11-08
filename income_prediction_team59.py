@@ -2,7 +2,7 @@ import numpy
 import pandas
 import re
 from sklearn.linear_model import LinearRegression
-debug = 1
+debug = 0
 
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
 # We are team59, the members are Lin, Deepthi, and Adam. Written by Lin Tung-Te 2019/11/6
@@ -12,16 +12,50 @@ file_name_fit       = 'tcd-ml-1920-group-income-train.csv'
 file_name_predict   = 'tcd-ml-1920-group-income-test.csv'
 file_name_result    = 'tcd-ml-1920-group-income-submission.csv'
 
+def checkUnique(file_fit,file_predict): #Helper function made by Adam
+    print("Year of Record", file_fit["Year of Record"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Housing Situation", file_fit["Housing Situation"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------") 
+    print("Crime Level in the City of Employement", file_fit["Crime Level in the City of Employement"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Work Experience in Current Job [years]", file_fit["Work Experience in Current Job [years]"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Satisfation with employer", file_fit["Satisfation with employer"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Gender", file_fit["Gender"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Age", file_fit["Age"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Country", file_fit["Country"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Size of City", file_fit["Size of City"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Profession", file_fit["Profession"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("University Degree", file_fit["University Degree"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Wears Glasses", file_fit["Wears Glasses"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Hair Color", file_fit["Hair Color"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Body Height",file_fit["Body Height [cm]"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Additional income", file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    print("Total income", file_fit["Total Yearly Income [EUR]"].unique())
+    print("-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+
+
 
 def preprocess(file_fit,file_predict):       #Adam's code
     #Import the file_fit
     #Before I begin working with new data I like to print informtation about the data to see what I am working with
     #Print some useful information about the data to see what we are dealing with
-    print("----------------------------------------------------------------------------------------------------Adam's Notes----------------------------------------------------------------------------------------------------")
+    print("---------------------------------------------------------------------------------------------------ADAM'S NOTES----------------------------------------------------------------------------------------------------")
     print(""" 
     Set debug = 1 if you wish to see info about imported data printed, 0 if you do not want that \n
     I am not sure what crime rate is measured in terms of and what the upper and lower bounds of that scale are, seems fairly arbitrary to me \n
-    Also housing Situation is redundant, its all zeros \n
     NaN in hair color makes sense as people can be bald so I shall leave that \n
     """)
     print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
@@ -54,15 +88,28 @@ def preprocess(file_fit,file_predict):       #Adam's code
     #Clean up begins
     #Remove the EUR at the end of Yearly Income in addition to Salary (e.g. Rental Income) using regex so data can be treated as a number
     #Change datatype of column to float64 instead of previous type of Object
+    
     file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
     file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"])
     
+    checkUnique(file_fit, file_predict)
+
     #Change #N/A to no so that there are not two options for no degree
-    file_fit["University Degree"] = file_fit["University Degree"].replace( "#N/A" ,'no')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "#N/A" ,'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( numpy.NaN ,'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "0" ,'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "no" ,'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "No" ,'None')
 
     file_predict["Yearly Income in addition to Salary (e.g. Rental Income)"] = file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
     file_predict["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"])
-    file_predict["University Degree"] = file_fit["University Degree"].replace( "#N/A" ,'no')
+    file_predict["University Degree"] = file_fit["University Degree"].replace( "#N/A" ,'None')
+    file_predict["University Degree"] = file_fit["University Degree"].replace( numpy.NaN ,'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "0",'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "no" ,'None')
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "No" ,'None')
+
+    checkUnique(file_fit, file_predict)
 
     return file_fit,file_predict 
 
