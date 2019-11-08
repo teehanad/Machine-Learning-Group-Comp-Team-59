@@ -1,6 +1,8 @@
 import numpy
 import pandas
+import re
 from sklearn.linear_model import LinearRegression
+debug = 0
 
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
 # We are team59, the members are Lin, Deepthi, and Adam. Written by Lin Tung-Te 2019/11/6
@@ -12,7 +14,36 @@ file_name_result    = 'tcd-ml-1920-group-income-submission.csv'
 
 
 def preprocess(file_fit,file_predict):       #Adam's code
-    return file_fit,file_predict
+    #Import the file_fit
+    #Before I begin working with new data I like to print informtation about the data to see what I am working with
+    #Print some useful information about the data to see what we are dealing with
+    print("----------------------------------------------------------------------------------------------------Adam's Notes----------------------------------------------------------------------------------------------------")
+    print(""" 
+    Set debug = 1 if you wish to see info about imported data printed, 0 if you do not want that \n
+    I am not sure what crime rate is measured in terms of and what the upper and lower bounds of that scale are, seems fairly arbitrary to me \n
+    Also housing Situation is redundant, its all zeros \n
+    NaN in hair color makes sense as people can be bald so I shall leave that \n
+    """)
+    print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+    if(debug == 1):   
+        file_fit.info()
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(file_fit.head(10))
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(file_fit.describe())
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(file_fit.shape)
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print("Info printed ...")
+
+    #Clean up begins
+    #Remove the EUR at the end of Yearly Income in addition to Salary (e.g. Rental Income) using regex so data can be treated as a number
+    file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
+    #Change datatype of column to float64 instead of previous type of Object
+    file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"])
+
+    
+    return file_fit,file_predict 
 
 def encoding(file_fit,file_predict):         #Deepthi's code
     return file_fit,file_predict
