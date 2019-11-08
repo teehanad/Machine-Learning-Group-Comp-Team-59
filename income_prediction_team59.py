@@ -2,7 +2,7 @@ import numpy
 import pandas
 import re
 from sklearn.linear_model import LinearRegression
-debug = 0
+debug = 1
 
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
 # We are team59, the members are Lin, Deepthi, and Adam. Written by Lin Tung-Te 2019/11/6
@@ -26,23 +26,44 @@ def preprocess(file_fit,file_predict):       #Adam's code
     """)
     print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
     if(debug == 1):   
+        print("\n")
+        print("\n")
+        print("--------------------------------------------------------------------------------------------------TRAINING DATA INFO------------------------------------------------------------------------------------------------")
         file_fit.info()
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
         print(file_fit.head(10))
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
         print(file_fit.describe())
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
-        print(file_fit.shape)
+        print("Shape:", file_fit.shape)
+        print("------------------------------------------------------------------------------------------------END TRAINING DATA INFO ---------------------------------------------------------------------------------------------")
+
+        print("\n")
+        print("\n")
+        print("---------------------------------------------------------------------------------------------------TEST DATA INFO --------------------------------------------------------------------------------------------------")
+        file_predict.info()
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
-        print("Info printed ...")
+        print(file_predict.head(10))
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print(file_predict.describe())
+        print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
+        print("Shape:" ,file_predict.shape)
+        print("--------------------------------------------------------------------------------------------------END TEST DATA INFO------------------------------------------------------------------------------------------------")
+
 
     #Clean up begins
     #Remove the EUR at the end of Yearly Income in addition to Salary (e.g. Rental Income) using regex so data can be treated as a number
-    file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
     #Change datatype of column to float64 instead of previous type of Object
+    file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
     file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"])
-
     
+    #Change #N/A to no so that there are not two options for no degree
+    file_fit["University Degree"] = file_fit["University Degree"].replace( "#N/A" ,'no')
+
+    file_predict["Yearly Income in addition to Salary (e.g. Rental Income)"] = file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
+    file_predict["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(file_fit["Yearly Income in addition to Salary (e.g. Rental Income)"])
+    file_predict["University Degree"] = file_fit["University Degree"].replace( "#N/A" ,'no')
+
     return file_fit,file_predict 
 
 def encoding(file_fit,file_predict):         #Deepthi's code
