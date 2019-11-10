@@ -7,10 +7,14 @@ debug = 1
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
 # We are team59, the members are Lin, Deepthi, and Adam. Written by Lin Tung-Te 2019/11/6
 
-# The files for this competition.
+# The files are for this competition.
 file_name_fit       = 'tcd-ml-1920-group-income-train.csv'
 file_name_predict   = 'tcd-ml-1920-group-income-test.csv'
 file_name_result    = 'tcd-ml-1920-group-income-submission.csv'
+
+# The files are processed data.
+file_name_fit_processed =       'train-processed.csv'
+file_name_predict_processed =   'test-processed.csv'
 
 
 def checkUnique(filetofix): #Helper function made by Adam
@@ -94,7 +98,8 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"])
 
     #All the below is replacing the first value passed into the function with the second one, should be able to see whats going on from the line itself
-    filetofix["Year of Record"] = filetofix["Year of Record"].replace( numpy.NaN ,'None')
+    #filetofix["Year of Record"] = filetofix["Year of Record"].replace( numpy.NaN ,'None')  # Adam's old code, 'None' can not be processed, therefore I have to remove it. By Lin 2019/11/10
+    filetofix['Year of Record'].fillna(filetofix['Year of Record'].median(), inplace=True)  # Use median to replace of 'NA'. By Lin 2019/11/10
 
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "nA" ,'None')
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "0" ,'None')
@@ -134,15 +139,57 @@ def preprocess(filetofix, filename): #Adam's code
 
 
 def encoding(file_fit,file_predict):         #Deepthi's code
+    #One hot encoding is here, because Deepthi doesn't know how to put her code in this function, therefore I modified her code and put here. By Lin 2019/11/9
+    print('Start one hot encoding.')
+    # The columns used to one hot encoding.
+    #columns = ['Gender','Housing Situation','Hair Color','Year of Record','University Degree']
+    columns = ['Gender','Housing Situation','Hair Color','University Degree']
+    for column in columns:
+        file_fit = pandas.get_dummies(file_fit,columns=[column],prefix=[column])
+        file_predict = pandas.get_dummies(file_predict,columns=[column],prefix=[column])
+    print('One hot encoding is finished.')
     return file_fit,file_predict
 
-def analysis(file_fit,file_predict):         #Lin's code
-    model = LinearRegression()
-    fit_x = file_fit['Instance'].values.reshape(-1,1)
+def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
+
+    print('Output the processed files.')
+    file_fit.to_csv(file_name_fit_processed,index=False)
+    file_predict.to_csv(file_name_predict_processed,index=False)
+
+##    print('Check income.')
+##    null_columns=file_fit.columns[file_fit.isnull().any()]
+##    print(file_fit[file_fit["Total Yearly Income [EUR]"].isnull()][null_columns])
+
     fit_y = file_fit['Total Yearly Income [EUR]']
+
+    #The columns are not used temporarily.
+    unused_columns = ['Total Yearly Income [EUR]','Satisfation with employer','Country','Profession']
+    for column in unused_columns:
+        file_fit = file_fit.drop([column],axis=1)
+        file_predict = file_predict.drop([column],axis=1)
+
+    # Do not include instance.
+    fit_x = file_fit.iloc[:,1:]
+    predict_x = file_predict.iloc[:,1:]
+
+##    print('Output the processed files.')
+##    fit_x.to_csv(file_name_fit_processed,index=False)
+##    predict_x.to_csv(file_name_predict_processed,index=False)
+
+##    print('Check weird data.')
+##    check_arrays = [fit_x,predict_x]
+##    for array in check_arrays:
+##        null_columns=array.columns[array.isnull().any()]
+##        #print(array[array.isnull().any(axis=1)][null_columns].head())
+##        print(array[null_columns].isnull().sum())
+    
+    model = LinearRegression()
+    
+    print('Start fitting.')
     model.fit(fit_x,fit_y)
-    predict_x = file_predict['Instance'].values.reshape(-1,1)
+    print('Fitting is finished, start predicting.')
     result = model.predict(predict_x)
+    print('Predicting is finished.')
     return result
 
 def main():
@@ -159,6 +206,8 @@ def main():
     result = analysis(file_fit,file_predict)
 
     # Output
+    print('Output the files.')
+    
     header = ['Instance','Total Yearly Income [EUR]']
     col1 = file_predict[header[0]]
     output = pandas.DataFrame({
@@ -167,7 +216,7 @@ def main():
     })
     
     output.to_csv(file_name_result,index=False)
-    print('finished...')
+    print('Finished...')
 
 if __name__ == "__main__":
     main()
