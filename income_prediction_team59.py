@@ -2,7 +2,7 @@ import numpy
 import pandas
 import re
 from sklearn.linear_model import LinearRegression
-debug = 1
+debug = 0
 
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
 # We are team59, the members are Lin, Deepthi, and Adam. Written by Lin Tung-Te 2019/11/6
@@ -69,7 +69,7 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
         print(file_fit.head(10))
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
-        print(file_fit.describe())
+        print(file_fit.describe().apply(lambda s: s.apply(lambda x: format(x, 'g'))))
         print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
         print("Shape:", file_fit.shape)
         print("------------------------------------------------------------------------------------------------END TRAINING DATA INFO ---------------------------------------------------------------------------------------------")
@@ -123,6 +123,18 @@ def preprocess(filetofix, filename): #Adam's code
 
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( '0' ,'Unknown')
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( numpy.NaN ,'Unknown')
+
+    filetofix = filetofix[filetofix['Total Yearly Income [EUR]'] <= 300000] 
+    filetofix = filetofix[filetofix['Age'] <= 78.5]
+    filetofix = filetofix[filetofix['Height'] <= 192.88]
+
+    del filetofix['Instance']
+    del filetofix['Housing Situation']
+    del filetofix['Crime Level in the City of Employement']
+    del filetofix['Satisfation with employer']
+    del filetofix['Hair Color']
+    del filetofix['Size of City']
+
 
     #Debug Mode
     if debug == 1:
@@ -194,9 +206,13 @@ def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
 
 def main():
 
+
+
     # Reading files.
     file_fit = pandas.read_csv(file_name_fit,low_memory=False)
     file_predict = pandas.read_csv(file_name_predict,low_memory=False)
+    print(file_fit.describe().apply(lambda s: s.apply(lambda x: format(x, 'g'))))
+    print(file_predict.describe().apply(lambda s: s.apply(lambda x: format(x, 'g'))))
 
     # Calling our functions.
     printInfo(file_fit, file_predict)
