@@ -2,6 +2,10 @@ import numpy
 import pandas
 import re
 from sklearn.linear_model import LinearRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn import datasets, linear_model
+
 debug = 0
 
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
@@ -16,6 +20,68 @@ file_name_result    = 'tcd-ml-1920-group-income-submission.csv'
 file_name_fit_processed =       'train-processed.csv'
 file_name_predict_processed =   'test-processed.csv'
 
+
+def add_noise(series, noise_level):
+    #Fnction to add noise to the series
+    return series * (1 + noise_level * numpy.random.randn(len(series)))
+
+def target_encode(dataset,testset,target):
+    #Function to preform Target encoding
+    min_samples_leaf=1 
+    smoothing=1,
+    noise_level=0
+    temp = pandas.concat([dataset, target], axis=1)
+
+    #Compute target mean 
+    averages = temp.groupby(by=dataset.name)[target.name].agg(["mean", "count"])
+
+    #Compute smoothing
+    smoothing = 1 / (1 + numpy.exp(-(averages["count"] - min_samples_leaf) / smoothing))
+
+    #Apply average function to all target data
+    prior = target.mean()
+
+    #The bigger the count the less full_avg is taken into account
+    averages[target.name] = prior * (1 - smoothing) + averages["mean"] * smoothing
+    averages.drop(["mean", "count"], axis=1, inplace=True)
+
+    # Apply average
+    assert len(dataset) == len(target)
+    assert dataset.name == testset.name
+    temp = pandas.concat([dataset, target], axis=1)
+
+    # Compute target mean 
+    averages = temp.groupby(by=dataset.name)[target.name].agg(["mean", "count"])
+
+    # Compute smoothing
+    smoothing = 1 / (1 + numpy.exp(-(averages["count"] - min_samples_leaf) / smoothing))
+
+    # Apply average function to all target data
+    prior = target.mean()
+
+    # The bigger the count the less full_avg is taken into account
+    averages[target.name] = prior * (1 - smoothing) + averages["mean"] * smoothing
+    averages.drop(["mean", "count"], axis=1, inplace=True)
+
+    # Apply averages to dataset and testset
+    feature_dataset = pandas.merge(
+        dataset.to_frame(dataset.name),
+        averages.reset_index().rename(columns={'index': target.name, target.name: 'average'}),
+        on=dataset.name,
+        how='left')['average'].rename(dataset.name + '_mean').fillna(prior)
+
+    # pandas.merge does not keep the index so restore it
+    feature_dataset.index = dataset.index 
+    feature_testset = pandas.merge(
+        testset.to_frame(testset.name),
+        averages.reset_index().rename(columns={'index': target.name, target.name: 'average'}),
+        on=testset.name,
+        how='left')['average'].rename(dataset.name + '_mean').fillna(prior)
+
+    # pd.merge does not keep the index so restore it
+    feature_testset.index = testset.index
+
+    return add_noise(feature_dataset, noise_level), add_noise(feature_testset, noise_level)
 
 def checkUnique(filetofix): #Helper function made by Adam
     print("Year of Record", filetofix["Year of Record"].unique())
@@ -92,6 +158,7 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
     
 #Chnaged the function to take in filetofix instead of file_fit and file_predict so that I didnt have to write each line of code twice, changed the main function to just call this function twice with each different file instead of what is was before
 def preprocess(filetofix, filename): #Adam's code
+    
     #Remove the EUR at the end of Yearly Income in addition to Salary (e.g. Rental Income) using regex so data can be treated as a number
     #Change datatype of column to float64 instead of previous type of Object
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
@@ -124,17 +191,23 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( '0' ,'Unknown')
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( numpy.NaN ,'Unknown')
 
-    filetofix = filetofix[filetofix['Total Yearly Income [EUR]'] <= 300000] 
-    filetofix = filetofix[filetofix['Age'] <= 78.5]
-    filetofix = filetofix[filetofix['Height'] <= 192.88]
+    if(filename == '"FILE_FIT"'):
+        filetofix = filetofix[filetofix['Total Yearly Income [EUR]'] <= 300000] 
+        filetofix = filetofix[filetofix['Age'] <= 78.5]
+        filetofix = filetofix[filetofix['Body Height [cm]'] <= 192.88]
 
-    del filetofix['Instance']
-    del filetofix['Housing Situation']
-    del filetofix['Crime Level in the City of Employement']
-    del filetofix['Satisfation with employer']
-    del filetofix['Hair Color']
-    del filetofix['Size of City']
-
+    # Modified Adam's code to be easy to be adjusted. Lin 2019.11.18
+    #removed_columns = ['Housing Situation','Crime Level in the City of Employement','Satisfation with employer','Hair Color','Size of City']
+    removed_columns = []
+    for column in removed_columns:
+        del filetofix[column]
+        
+##    del filetofix['Instance']
+##    del filetofix['Housing Situation']
+##    del filetofix['Crime Level in the City of Employement']
+##    del filetofix['Satisfation with employer']
+##    del filetofix['Hair Color']
+##    del filetofix['Size of City']
 
     #Debug Mode
     if debug == 1:
@@ -144,29 +217,39 @@ def preprocess(filetofix, filename): #Adam's code
         checkUnique(filetofix)
         print("----------------------------------------------------------------------------------------END CHECK UNIQUE DATA FOR " +filename+"---------------------------------------------------------------------------------------")
 
-
-
     return filetofix
-
-
 
 def encoding(file_fit,file_predict):         #Deepthi's code
     #One hot encoding is here, because Deepthi doesn't know how to put her code in this function, therefore I modified her code and put here. By Lin 2019/11/9
     print('Start one hot encoding.')
     # The columns used to one hot encoding.
     #columns = ['Gender','Housing Situation','Hair Color','Year of Record','University Degree']
-    columns = ['Gender','Housing Situation','Hair Color','University Degree']
+    columns = ['Gender','Housing Situation','Hair Color','University Degree','Satisfation with employer']
     for column in columns:
-        file_fit = pandas.get_dummies(file_fit,columns=[column],prefix=[column])
-        file_predict = pandas.get_dummies(file_predict,columns=[column],prefix=[column])
+        if column in file_fit.columns:
+            file_fit = pandas.get_dummies(file_fit,columns=[column],prefix=[column])
+            file_predict = pandas.get_dummies(file_predict,columns=[column],prefix=[column])
     print('One hot encoding is finished.')
+
+##    print('Output the processed files.')
+##    file_fit.to_csv(file_name_fit_processed,index=False)
+##    file_predict.to_csv(file_name_predict_processed,index=False)
+
+    # The columns used to target encoding.
+    columns = ['Country','Profession']
+    target = file_fit['Total Yearly Income [EUR]']
+    print('Start target encoding.')
+    for column in columns:
+        if column in file_fit.columns:
+            file_fit[column],file_predict[column] = target_encode(file_fit[column],file_predict[column],target)
+    print('Target encoding is finished.')
     return file_fit,file_predict
 
 def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
 
-    print('Output the processed files.')
-    file_fit.to_csv(file_name_fit_processed,index=False)
-    file_predict.to_csv(file_name_predict_processed,index=False)
+##    print('Output the processed files.')
+##    file_fit.to_csv(file_name_fit_processed,index=False)
+##    file_predict.to_csv(file_name_predict_processed,index=False)
 
 ##    print('Check income.')
 ##    null_columns=file_fit.columns[file_fit.isnull().any()]
@@ -175,7 +258,8 @@ def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
     fit_y = file_fit['Total Yearly Income [EUR]']
 
     #The columns are not used temporarily.
-    unused_columns = ['Total Yearly Income [EUR]','Satisfation with employer','Country','Profession']
+    #unused_columns = ['Total Yearly Income [EUR]','Satisfation with employer','Country','Profession']
+    unused_columns = ['Total Yearly Income [EUR]']
     for column in unused_columns:
         file_fit = file_fit.drop([column],axis=1)
         file_predict = file_predict.drop([column],axis=1)
@@ -195,8 +279,8 @@ def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
 ##        #print(array[array.isnull().any(axis=1)][null_columns].head())
 ##        print(array[null_columns].isnull().sum())
     
-    model = LinearRegression()
-    
+    #model = LinearRegression()
+    model = make_pipeline(PolynomialFeatures(2),linear_model.LinearRegression()) #using PolynomialFeatures
     print('Start fitting.')
     model.fit(fit_x,fit_y)
     print('Fitting is finished, start predicting.')
@@ -206,18 +290,24 @@ def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
 
 def main():
 
-
-
     # Reading files.
     file_fit = pandas.read_csv(file_name_fit,low_memory=False)
     file_predict = pandas.read_csv(file_name_predict,low_memory=False)
+
+    
     print(file_fit.describe().apply(lambda s: s.apply(lambda x: format(x, 'g'))))
     print(file_predict.describe().apply(lambda s: s.apply(lambda x: format(x, 'g'))))
 
     # Calling our functions.
     printInfo(file_fit, file_predict)
+
+##    print('Output the processed files.')
+##    file_fit.to_csv(file_name_fit_processed,index=False)
+##    file_predict.to_csv(file_name_predict_processed,index=False)
+    
     file_fit = preprocess(file_fit, "FILE_FIT")
     file_predict = preprocess(file_predict, "FILE_PREDICT")
+    
     file_fit,file_predict = encoding(file_fit,file_predict)
     result = analysis(file_fit,file_predict)
 
