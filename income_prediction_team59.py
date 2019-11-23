@@ -5,6 +5,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn import datasets, linear_model
+from sklearn.linear_model import BayesianRidge
 
 debug = 0
 
@@ -152,9 +153,6 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
         print("Shape:" ,file_predict.shape)
         print("--------------------------------------------------------------------------------------------------END TEST DATA INFO------------------------------------------------------------------------------------------------")
 
-
-    
-    
     
 #Chnaged the function to take in filetofix instead of file_fit and file_predict so that I didnt have to write each line of code twice, changed the main function to just call this function twice with each different file instead of what is was before
 def preprocess(filetofix, filename): #Adam's code
@@ -223,8 +221,8 @@ def encoding(file_fit,file_predict):         #Deepthi's code
     #One hot encoding is here, because Deepthi doesn't know how to put her code in this function, therefore I modified her code and put here. By Lin 2019/11/9
     print('Start one hot encoding.')
     # The columns used to one hot encoding.
-    #columns = ['Gender','Housing Situation','Hair Color','Year of Record','University Degree']
-    columns = ['Gender','Housing Situation','Hair Color','University Degree','Satisfation with employer']
+    #columns = ['Gender','Housing Situation','Hair Color','University Degree','Satisfation with employer']
+    columns = []
     for column in columns:
         if column in file_fit.columns:
             file_fit = pandas.get_dummies(file_fit,columns=[column],prefix=[column])
@@ -236,7 +234,8 @@ def encoding(file_fit,file_predict):         #Deepthi's code
 ##    file_predict.to_csv(file_name_predict_processed,index=False)
 
     # The columns used to target encoding.
-    columns = ['Country','Profession']
+    #columns = ['Country','Profession']
+    columns = ['Gender','Housing Situation','Hair Color','University Degree','Satisfation with employer','Country','Profession']
     target = file_fit['Total Yearly Income [EUR]']
     print('Start target encoding.')
     for column in columns:
@@ -280,7 +279,8 @@ def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
 ##        print(array[null_columns].isnull().sum())
     
     #model = LinearRegression()
-    model = make_pipeline(PolynomialFeatures(2),linear_model.LinearRegression()) #using PolynomialFeatures
+    #model = BayesianRidge()
+    model = make_pipeline(PolynomialFeatures(3),linear_model.LinearRegression()) #using PolynomialFeatures
     print('Start fitting.')
     model.fit(fit_x,fit_y)
     print('Fitting is finished, start predicting.')
