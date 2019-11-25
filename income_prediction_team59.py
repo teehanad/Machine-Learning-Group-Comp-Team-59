@@ -162,21 +162,25 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"])
 
-    #All the below is replacing the first value passed into the function with the second one, should be able to see whats going on from the line itself
-    #filetofix["Year of Record"] = filetofix["Year of Record"].replace( numpy.NaN ,'None')  # Adam's old code, 'None' can not be processed, therefore I have to remove it. By Lin 2019/11/10
     filetofix['Year of Record'].fillna(filetofix['Year of Record'].median(), inplace=True)  # Use median to replace of 'NA'. By Lin 2019/11/10
 
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "nA" ,'None')
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "0" ,'None')
 
-    #Needs fixing
-    filetofix["Work Experience in Current Job [years]"] = filetofix["Work Experience in Current Job [years]"].replace( "#NUM!" ,'0' )
-
-    filetofix["Satisfation with employer"] = filetofix["Satisfation with employer"].replace( numpy.NaN ,'Unknown')
+    filetofix["Work Experience in Current Job [years]"] = filetofix["Work Experience in Current Job [years]"].replace( "#NUM!" ,numpy.NaN)
+    filetofix['Work Experience in Current Job [years]'].fillna(filetofix['Work Experience in Current Job [years]'].median(), inplace=True) 
+    filetofix["Work Experience in Current Job [years]"] = pandas.to_numeric(filetofix["Work Experience in Current Job [years]"])
 
     filetofix["Gender"] = filetofix["Gender"].replace( "f" ,'female')
-    filetofix["Gender"] = filetofix["Gender"].replace( "0" ,'None')
-    filetofix["Gender"] = filetofix["Gender"].replace( numpy.NaN ,'None')
+    filetofix["Gender"] = filetofix["Gender"].replace( "0" ,'other')
+    filetofix["Gender"] = filetofix["Gender"].replace( "nan" ,numpy.NaN)
+    filetofix["Gender"] = filetofix["Gender"].replace( 'unknown' ,numpy.NaN)
+    filetofix["Gender"] = filetofix["Gender"].replace( "#N/A" ,numpy.NaN)
+    filetofix['Gender'].fillna(filetofix['Gender'].mode(dropna=True)[0], inplace=True) 
+
+    filetofix["Satisfation with employer"] = filetofix["Satisfation with employer"].replace( "nan" ,numpy.NaN)
+    filetofix['Satisfation with employer'].fillna(filetofix['Satisfation with employer'].mode(dropna=True)[0], inplace=True) 
+
 
     filetofix["Country"] = filetofix["Country"].replace( '0' ,'Unknown')
 
@@ -189,6 +193,8 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( '0' ,'Unknown')
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( numpy.NaN ,'Unknown')
 
+    filetofix['Profession'].fillna(filetofix['Profession'].mode(dropna=True)[0], inplace=True)
+    filetofix['Country'].fillna(filetofix['Country'].mode(dropna=True)[0], inplace=True) 
     if(filename == '"FILE_FIT"'):
         filetofix = filetofix[filetofix['Total Yearly Income [EUR]'] <= 300000] 
         filetofix = filetofix[filetofix['Age'] <= 78.5]
@@ -222,11 +228,33 @@ def encoding(file_fit,file_predict):         #Deepthi's code
     print('Start one hot encoding.')
     # The columns used to one hot encoding.
     #columns = ['Gender','Housing Situation','Hair Color','University Degree','Satisfation with employer']
-    columns = []
-    for column in columns:
-        if column in file_fit.columns:
-            file_fit = pandas.get_dummies(file_fit,columns=[column],prefix=[column])
-            file_predict = pandas.get_dummies(file_predict,columns=[column],prefix=[column])
+    # columns = []
+    # for column in columns:
+    #     if column in file_fit.columns:
+    #         file_fit = pandas.get_dummies(file_fit,columns=[column],prefix=[column])
+    #         file_predict = pandas.get_dummies(file_predict,columns=[column],prefix=[column])
+
+    # Categorical boolean mask
+    categorical_feature_mask = file_fit.dtypes==object
+    # filter categorical columns using mask and turn it into a list
+    categorical_cols = file_fit.columns[categorical_feature_mask].tolist()
+    dummy = pandas.get_dummies(file_fit[categorical_cols], drop_first=True)
+    print(dummy.head(20))
+    file_fit = pandas.concat([file_fit, dummy], axis=1)
+    for column in categorical_cols:
+        del file_fit[column]
+    print(file_fit.head(20))
+
+    # Categorical boolean mask
+    categorical_feature_mask = file_predict.dtypes==object
+    # filter categorical columns using mask and turn it into a list
+    categorical_cols = file_predict.columns[categorical_feature_mask].tolist()
+    dummy = pandas.get_dummies(file_predict[categorical_cols], drop_first=True)
+    print(dummy.head(20))
+    file_predict = pandas.concat([file_predict, dummy], axis=1)
+    for column in categorical_cols:
+        del file_predict[column]
+    print(file_predict.head(20))
     print('One hot encoding is finished.')
 
 ##    print('Output the processed files.')
