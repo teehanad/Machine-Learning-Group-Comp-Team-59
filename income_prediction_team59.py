@@ -7,6 +7,11 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn import datasets, linear_model
 from sklearn.linear_model import BayesianRidge
 
+from sklearn.model_selection import train_test_split
+import lightgbm
+
+from sklearn.ensemble import RandomForestRegressor
+
 debug = 0
 
 # This code is for the group competition in Kaggle for Computer Science Machine Learning at TCD.
@@ -156,27 +161,31 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
     
 #Chnaged the function to take in filetofix instead of file_fit and file_predict so that I didnt have to write each line of code twice, changed the main function to just call this function twice with each different file instead of what is was before
 def preprocess(filetofix, filename): #Adam's code
-    
+   
     #Remove the EUR at the end of Yearly Income in addition to Salary (e.g. Rental Income) using regex so data can be treated as a number
     #Change datatype of column to float64 instead of previous type of Object
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"].replace(to_replace ='EUR', value = '', regex = True)
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"])
 
-    #All the below is replacing the first value passed into the function with the second one, should be able to see whats going on from the line itself
-    #filetofix["Year of Record"] = filetofix["Year of Record"].replace( numpy.NaN ,'None')  # Adam's old code, 'None' can not be processed, therefore I have to remove it. By Lin 2019/11/10
     filetofix['Year of Record'].fillna(filetofix['Year of Record'].median(), inplace=True)  # Use median to replace of 'NA'. By Lin 2019/11/10
 
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "nA" ,'None')
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "0" ,'None')
 
-    #Needs fixing
-    filetofix["Work Experience in Current Job [years]"] = filetofix["Work Experience in Current Job [years]"].replace( "#NUM!" ,'0' )
-
-    filetofix["Satisfation with employer"] = filetofix["Satisfation with employer"].replace( numpy.NaN ,'Unknown')
+    filetofix["Work Experience in Current Job [years]"] = filetofix["Work Experience in Current Job [years]"].replace( "#NUM!" ,numpy.NaN)
+    filetofix['Work Experience in Current Job [years]'].fillna(filetofix['Work Experience in Current Job [years]'].median(), inplace=True) 
+    filetofix["Work Experience in Current Job [years]"] = pandas.to_numeric(filetofix["Work Experience in Current Job [years]"])
 
     filetofix["Gender"] = filetofix["Gender"].replace( "f" ,'female')
-    filetofix["Gender"] = filetofix["Gender"].replace( "0" ,'None')
-    filetofix["Gender"] = filetofix["Gender"].replace( numpy.NaN ,'None')
+    filetofix["Gender"] = filetofix["Gender"].replace( "0" ,'other')
+    filetofix["Gender"] = filetofix["Gender"].replace( "nan" ,numpy.NaN)
+    filetofix["Gender"] = filetofix["Gender"].replace( 'unknown' ,numpy.NaN)
+    filetofix["Gender"] = filetofix["Gender"].replace( "#N/A" ,numpy.NaN)
+    filetofix['Gender'].fillna(filetofix['Gender'].mode(dropna=True)[0], inplace=True) 
+
+    filetofix["Satisfation with employer"] = filetofix["Satisfation with employer"].replace( "nan" ,numpy.NaN)
+    filetofix['Satisfation with employer'].fillna(filetofix['Satisfation with employer'].mode(dropna=True)[0], inplace=True) 
+
 
     filetofix["Country"] = filetofix["Country"].replace( '0' ,'Unknown')
 
@@ -189,31 +198,13 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( '0' ,'Unknown')
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( numpy.NaN ,'Unknown')
 
-    if(filename == '"FILE_FIT"'):
-        filetofix = filetofix[filetofix['Total Yearly Income [EUR]'] <= 300000] 
-        filetofix = filetofix[filetofix['Age'] <= 78.5]
-        filetofix = filetofix[filetofix['Body Height [cm]'] <= 192.88]
+    filetofix['Profession'].fillna(filetofix['Profession'].mode(dropna=True)[0], inplace=True)
+    filetofix['Country'].fillna(filetofix['Country'].mode(dropna=True)[0], inplace=True) 
 
-    # Modified Adam's code to be easy to be adjusted. Lin 2019.11.18
-    #removed_columns = ['Housing Situation','Crime Level in the City of Employement','Satisfation with employer','Hair Color','Size of City']
-    removed_columns = []
+    #removed_columns = ['Crime Level in the City of Employement', 'Size of City','Wears Glasses','Yearly Income in addition to Salary (e.g. Rental Income)']
+    removed_columns = ['Crime Level in the City of Employement', 'Hair Color']
     for column in removed_columns:
         del filetofix[column]
-        
-##    del filetofix['Instance']
-##    del filetofix['Housing Situation']
-##    del filetofix['Crime Level in the City of Employement']
-##    del filetofix['Satisfation with employer']
-##    del filetofix['Hair Color']
-##    del filetofix['Size of City']
-
-    #Debug Mode
-    if debug == 1:
-        print("\n")
-        print("\n")
-        print("------------------------------------------------------------------------------------------CHECK UNIQUE DATA FOR " +filename+"----------------------------------------------------------------------------------------")
-        checkUnique(filetofix)
-        print("----------------------------------------------------------------------------------------END CHECK UNIQUE DATA FOR " +filename+"---------------------------------------------------------------------------------------")
 
     return filetofix
 
@@ -229,13 +220,8 @@ def encoding(file_fit,file_predict):         #Deepthi's code
             file_predict = pandas.get_dummies(file_predict,columns=[column],prefix=[column])
     print('One hot encoding is finished.')
 
-##    print('Output the processed files.')
-##    file_fit.to_csv(file_name_fit_processed,index=False)
-##    file_predict.to_csv(file_name_predict_processed,index=False)
-
     # The columns used to target encoding.
-    #columns = ['Country','Profession']
-    columns = ['Gender','Housing Situation','Hair Color','University Degree','Satisfation with employer','Country','Profession']
+    columns = ['Gender','Housing Situation','University Degree','Satisfation with employer','Country','Profession','Hair Color']
     target = file_fit['Total Yearly Income [EUR]']
     print('Start target encoding.')
     for column in columns:
@@ -244,7 +230,7 @@ def encoding(file_fit,file_predict):         #Deepthi's code
     print('Target encoding is finished.')
     return file_fit,file_predict
 
-def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
+def analysis(file_fit,file_predict,model_no,test_mode):         #Lin's code updated:2019/11/10
 
 ##    print('Output the processed files.')
 ##    file_fit.to_csv(file_name_fit_processed,index=False)
@@ -263,30 +249,99 @@ def analysis(file_fit,file_predict):         #Lin's code updated:2019/11/10
         file_fit = file_fit.drop([column],axis=1)
         file_predict = file_predict.drop([column],axis=1)
 
+    
+##    improved_columns = ['Housing Situation']
+##    print(file_fit['Housing Situation'])
+##    for column in improved_columns:
+##        file_fit[column] = file_fit[column]*1.2
+##    print(file_fit['Housing Situation'])
+    
     # Do not include instance.
     fit_x = file_fit.iloc[:,1:]
     predict_x = file_predict.iloc[:,1:]
 
-##    print('Output the processed files.')
-##    fit_x.to_csv(file_name_fit_processed,index=False)
-##    predict_x.to_csv(file_name_predict_processed,index=False)
 
-##    print('Check weird data.')
-##    check_arrays = [fit_x,predict_x]
-##    for array in check_arrays:
-##        null_columns=array.columns[array.isnull().any()]
-##        #print(array[array.isnull().any(axis=1)][null_columns].head())
-##        print(array[null_columns].isnull().sum())
-    
-    #model = LinearRegression()
-    #model = BayesianRidge()
-    model = make_pipeline(PolynomialFeatures(3),linear_model.LinearRegression()) #using PolynomialFeatures
-    print('Start fitting.')
-    model.fit(fit_x,fit_y)
-    print('Fitting is finished, start predicting.')
-    result = model.predict(predict_x)
-    print('Predicting is finished.')
-    return result
+    if(test_mode):
+        fit_x,predict_x,fit_y,predict_y = train_test_split(fit_x.values, fit_y.values, test_size=0.2, random_state=1)
+    else:
+        fit_x = fit_x.values
+        fit_y = fit_y.values
+
+
+    if (model_no == 0):
+        print('Using linear regression')
+        model = make_pipeline(PolynomialFeatures(1),linear_model.LinearRegression()) #using PolynomialFeatures
+        print('Start fitting.')
+        model.fit(fit_x,fit_y)
+        print('Fitting is finished, start predicting.')
+        result = model.predict(predict_x)
+        print('Predicting is finished.')
+    elif(model_no == 1):
+        print('Using LightGBM')
+        train_x, test_x, train_y, test_y = train_test_split(fit_x, fit_y, test_size=0.2, random_state=42)
+        
+        train_data = lightgbm.Dataset(train_x, label=train_y)
+        test_data = lightgbm.Dataset(test_x, label=test_y)
+
+        parameters = {
+            'objective': 'regression',
+            'metric': 'auc',
+            'is_unbalance': 'true',
+            'boosting': 'gbdt',
+            'num_leaves': 31,
+            'feature_fraction': 0.5,
+            'bagging_fraction': 0.5,
+            'bagging_freq': 20,
+            'learning_rate': 0.1,
+            'verbose': 0
+        }
+
+        model = lightgbm.train(parameters,
+                           train_data,
+                           valid_sets=test_data,
+                           num_boost_round=8000
+                           #,early_stopping_rounds=600
+                               ,early_stopping_rounds=100
+                               )
+        
+        model.save_model('gbm_model.txt')
+        model = lightgbm.Booster(model_file='gbm_model.txt')
+        
+        result = model.predict(predict_x)
+
+    elif(model_no == 2):
+        print("Using RandomForest")
+        randomForestGenerator = RandomForestRegressor(n_estimators=50,n_jobs=-1)
+       
+        #Fit the model
+        randomForestGenerator.fit(fit_x,fit_y)
+       
+        #Making predictions
+        print("Starting prediction")
+        result = randomForestGenerator.predict(predict_x)
+
+    elif(model_no == 3):
+        print('Using BayesianRidge')
+        model = BayesianRidge()
+        model.fit(fit_x,fit_y)
+        result = model.predict(predict_x)
+        
+
+        
+    if(test_mode):
+        score = result-predict_y
+        score = abs(score)
+        print('score:',sum(score))
+    else:   
+        # Output
+        print('Output the files.')
+        header = ['Instance','Total Yearly Income [EUR]']
+        col1 = file_predict[header[0]]
+        output = pandas.DataFrame({
+                header[0]:col1,
+                header[1]:result
+        })
+        output.to_csv(file_name_result,index=False)
 
 def main():
 
@@ -300,28 +355,14 @@ def main():
 
     # Calling our functions.
     printInfo(file_fit, file_predict)
-
-##    print('Output the processed files.')
-##    file_fit.to_csv(file_name_fit_processed,index=False)
-##    file_predict.to_csv(file_name_predict_processed,index=False)
     
     file_fit = preprocess(file_fit, "FILE_FIT")
     file_predict = preprocess(file_predict, "FILE_PREDICT")
     
     file_fit,file_predict = encoding(file_fit,file_predict)
-    result = analysis(file_fit,file_predict)
 
-    # Output
-    print('Output the files.')
-    
-    header = ['Instance','Total Yearly Income [EUR]']
-    col1 = file_predict[header[0]]
-    output = pandas.DataFrame({
-            header[0]:col1,
-            header[1]:result
-    })
-    
-    output.to_csv(file_name_result,index=False)
+    analysis(file_fit,file_predict,2,False)
+
     print('Finished...')
 
 if __name__ == "__main__":
