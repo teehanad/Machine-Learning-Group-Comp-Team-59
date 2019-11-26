@@ -129,8 +129,6 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
     print("---------------------------------------------------------------------------------------------------ADAM'S NOTES----------------------------------------------------------------------------------------------------")
     print(""" 
     Set debug = 1 if you wish to see info about imported data printed, 0 if you do not want that \n
-    I am not sure what crime rate is measured in terms of and what the upper and lower bounds of that scale are, seems fairly arbitrary to me \n
-    Unknown in hair color makes sense as people can be bald so I shall leave that \n
     """)
     print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
     if debug == 1:   
