@@ -8,7 +8,7 @@ from sklearn import datasets, linear_model
 from sklearn.linear_model import BayesianRidge
 
 from sklearn.model_selection import train_test_split
-import lightgbm
+#import lightgbm
 
 from sklearn.ensemble import RandomForestRegressor
 
@@ -129,6 +129,8 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
     print("---------------------------------------------------------------------------------------------------ADAM'S NOTES----------------------------------------------------------------------------------------------------")
     print(""" 
     Set debug = 1 if you wish to see info about imported data printed, 0 if you do not want that \n
+    I am not sure what crime rate is measured in terms of and what the upper and lower bounds of that scale are, seems fairly arbitrary to me \n
+    Unknown in hair color makes sense as people can be bald so I shall leave that \n
     """)
     print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
     if debug == 1:   
@@ -171,7 +173,9 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "0" ,'None')
 
     filetofix["Work Experience in Current Job [years]"] = filetofix["Work Experience in Current Job [years]"].replace( "#NUM!" ,numpy.NaN)
-    filetofix['Work Experience in Current Job [years]'].fillna(filetofix['Work Experience in Current Job [years]'].median(), inplace=True) 
+    #print('median:',filetofix['Work Experience in Current Job [years]'].median())
+    #filetofix['Work Experience in Current Job [years]'].fillna(filetofix['Work Experience in Current Job [years]'].median(), inplace=True)
+    filetofix['Work Experience in Current Job [years]'].fillna(0, inplace=True)
     filetofix["Work Experience in Current Job [years]"] = pandas.to_numeric(filetofix["Work Experience in Current Job [years]"])
 
     filetofix["Gender"] = filetofix["Gender"].replace( "f" ,'female')
@@ -200,7 +204,8 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix['Country'].fillna(filetofix['Country'].mode(dropna=True)[0], inplace=True) 
 
     #removed_columns = ['Crime Level in the City of Employement', 'Size of City','Wears Glasses','Yearly Income in addition to Salary (e.g. Rental Income)']
-    removed_columns = ['Crime Level in the City of Employement', 'Hair Color']
+    #removed_columns = ['Crime Level in the City of Employement', 'Hair Color']
+    removed_columns = ['Age','Hair Color','Wears Glasses','Body Height [cm]']
     for column in removed_columns:
         del filetofix[column]
 
@@ -248,11 +253,9 @@ def analysis(file_fit,file_predict,model_no,test_mode):         #Lin's code upda
         file_predict = file_predict.drop([column],axis=1)
 
     
-##    improved_columns = ['Housing Situation']
-##    print(file_fit['Housing Situation'])
+##    improved_columns = ['Country','Yearly Income in addition to Salary (e.g. Rental Income)']
 ##    for column in improved_columns:
-##        file_fit[column] = file_fit[column]*1.2
-##    print(file_fit['Housing Situation'])
+##        file_fit[column] = pow(file_fit[column],0.5)
     
     # Do not include instance.
     fit_x = file_fit.iloc[:,1:]
@@ -260,7 +263,7 @@ def analysis(file_fit,file_predict,model_no,test_mode):         #Lin's code upda
 
 
     if(test_mode):
-        fit_x,predict_x,fit_y,predict_y = train_test_split(fit_x.values, fit_y.values, test_size=0.2, random_state=1)
+        fit_x,predict_x,fit_y,predict_y = train_test_split(fit_x.values, fit_y.values, test_size=0.2, random_state=30)
     else:
         fit_x = fit_x.values
         fit_y = fit_y.values
@@ -309,7 +312,7 @@ def analysis(file_fit,file_predict,model_no,test_mode):         #Lin's code upda
 
     elif(model_no == 2):
         print("Using RandomForest")
-        randomForestGenerator = RandomForestRegressor(n_estimators=50,n_jobs=-1)
+        randomForestGenerator = RandomForestRegressor(n_estimators=200,n_jobs=-1)
        
         #Fit the model
         randomForestGenerator.fit(fit_x,fit_y)
