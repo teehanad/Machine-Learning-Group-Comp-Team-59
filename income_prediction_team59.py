@@ -129,8 +129,6 @@ def printInfo(file_fit,file_predict): #Helper function made by Adam
     print("---------------------------------------------------------------------------------------------------ADAM'S NOTES----------------------------------------------------------------------------------------------------")
     print(""" 
     Set debug = 1 if you wish to see info about imported data printed, 0 if you do not want that \n
-    I am not sure what crime rate is measured in terms of and what the upper and lower bounds of that scale are, seems fairly arbitrary to me \n
-    Unknown in hair color makes sense as people can be bald so I shall leave that \n
     """)
     print("--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
     if debug == 1:   
@@ -168,39 +166,52 @@ def preprocess(filetofix, filename): #Adam's code
     filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"] = pandas.to_numeric(filetofix["Yearly Income in addition to Salary (e.g. Rental Income)"])
 
     filetofix['Year of Record'].fillna(filetofix['Year of Record'].median(), inplace=True)  # Use median to replace of 'NA'. By Lin 2019/11/10
-
+    
+    #Replace NA and 0 with None
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "nA" ,'None')
     filetofix["Housing Situation"] = filetofix["Housing Situation"].replace( "0" ,'None')
 
+    #Replace #NUM with a numpy nan
     filetofix["Work Experience in Current Job [years]"] = filetofix["Work Experience in Current Job [years]"].replace( "#NUM!" ,numpy.NaN)
     #print('median:',filetofix['Work Experience in Current Job [years]'].median())
     #filetofix['Work Experience in Current Job [years]'].fillna(filetofix['Work Experience in Current Job [years]'].median(), inplace=True)
+    #Replace all numpy nan's with a numeric 0
     filetofix['Work Experience in Current Job [years]'].fillna(0, inplace=True)
+    #change column datatype to float64
     filetofix["Work Experience in Current Job [years]"] = pandas.to_numeric(filetofix["Work Experience in Current Job [years]"])
 
+    #Replace all f, 0, nan, unknown, #N/A with a numnpy nan
     filetofix["Gender"] = filetofix["Gender"].replace( "f" ,'female')
     filetofix["Gender"] = filetofix["Gender"].replace( "0" ,'other')
     filetofix["Gender"] = filetofix["Gender"].replace( "nan" ,numpy.NaN)
     filetofix["Gender"] = filetofix["Gender"].replace( 'unknown' ,numpy.NaN)
     filetofix["Gender"] = filetofix["Gender"].replace( "#N/A" ,numpy.NaN)
+    #Replae all numpy nan with the mode of the cloumn
     filetofix['Gender'].fillna(filetofix['Gender'].mode(dropna=True)[0], inplace=True) 
 
+    #replace nan with numpy nan
     filetofix["Satisfation with employer"] = filetofix["Satisfation with employer"].replace( "nan" ,numpy.NaN)
+    replace numpy nan with mode of column
     filetofix['Satisfation with employer'].fillna(filetofix['Satisfation with employer'].mode(dropna=True)[0], inplace=True) 
 
-
+    
     filetofix["Country"] = filetofix["Country"].replace( '0' ,'Unknown')
-
+    
+    #repalce #N/A. numpy nan, 0, no and Non with None
     filetofix["University Degree"] = filetofix["University Degree"].replace( "#N/A" ,'None')
     filetofix["University Degree"] = filetofix["University Degree"].replace( numpy.NaN ,'None')
     filetofix["University Degree"] = filetofix["University Degree"].replace( "0" ,'None')
     filetofix["University Degree"] = filetofix["University Degree"].replace( "no" ,'None')
     filetofix["University Degree"] = filetofix["University Degree"].replace( "No" ,'None')
 
+    #Replace 0 and numpy nan with Unknown
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( '0' ,'Unknown')
     filetofix["Hair Color"] = filetofix["Hair Color"].replace( numpy.NaN ,'Unknown')
 
+    #replace numpy nan with mode of column
     filetofix['Profession'].fillna(filetofix['Profession'].mode(dropna=True)[0], inplace=True)
+    
+    #replace numpy nan with mode of column
     filetofix['Country'].fillna(filetofix['Country'].mode(dropna=True)[0], inplace=True) 
 
     #removed_columns = ['Crime Level in the City of Employement', 'Size of City','Wears Glasses','Yearly Income in addition to Salary (e.g. Rental Income)']
